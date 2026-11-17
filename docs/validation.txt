@@ -1,0 +1,109 @@
+Final submission verification / 2026-11-17 Asia/Shanghai
+Source snapshot: b3fa126 plus submission documentation and packaging script
+Method: extract program.zip to dist/verification; run with python -S
+Runtime reused from this Windows machine; site-packages disabled by -S
+Python: 3.10.9 | packaged by Anaconda, Inc. | (main, Mar  1 2023, 18:18:15) [MSC v.1916 64 bit (AMD64)]
+Platform: Windows-10-10.0.26200-SP0
+Tcl API version: 8.6
+Tk API version: 8.6
+OpenSSL: OpenSSL 1.1.1t  7 Feb 2023
+No-site flag: 1
+
+CLI matrix: two senders x three attacks x three defenses = 18 scenarios
+PASS sender=Alice attack=none defense=none: 结果：Bob 已接收
+PASS sender=Alice attack=none defense=hmac: 结果：Bob 已接收
+PASS sender=Alice attack=none defense=hmac-replay: 结果：Bob 已接收
+PASS sender=Alice attack=tamper defense=none: 结果：Bob 已接收
+PASS sender=Alice attack=tamper defense=hmac: 结果：Bob 已拒绝
+PASS sender=Alice attack=tamper defense=hmac-replay: 结果：Bob 已拒绝
+PASS sender=Alice attack=replay defense=none: 重放结果：Bob 已接收 | 收件箱消息数 2
+PASS sender=Alice attack=replay defense=hmac: 重放结果：Bob 已接收 | 收件箱消息数 2
+PASS sender=Alice attack=replay defense=hmac-replay: 重放结果：Bob 已拒绝 | 收件箱消息数 1
+PASS sender=Bob attack=none defense=none: 结果：Alice 已接收
+PASS sender=Bob attack=none defense=hmac: 结果：Alice 已接收
+PASS sender=Bob attack=none defense=hmac-replay: 结果：Alice 已接收
+PASS sender=Bob attack=tamper defense=none: 结果：Alice 已接收
+PASS sender=Bob attack=tamper defense=hmac: 结果：Alice 已拒绝
+PASS sender=Bob attack=tamper defense=hmac-replay: 结果：Alice 已拒绝
+PASS sender=Bob attack=replay defense=none: 重放结果：Alice 已接收 | 收件箱消息数 2
+PASS sender=Bob attack=replay defense=hmac: 重放结果：Alice 已接收 | 收件箱消息数 2
+PASS sender=Bob attack=replay defense=hmac-replay: 重放结果：Alice 已拒绝 | 收件箱消息数 1
+PASS -S -m lab.cli --sender Bob --defense hmac-replay (exit 0)
+PASS -S main.py --help (exit 0)
+PASS -S main.py --defense invalid (exit 2)
+PASS 4 README Python examples from extracted package
+PASS isolated package import originates in the extracted directory
+PASS crypto modules use project implementation imports
+
+Representative CLI outputs
+
+python -S main.py --sender Alice --message "转账 100 元" --attack none --defense none
+会话 560a0087a843ae4e4645fea41ad32786
+模式：原样转发 | 防御：无认证
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+结果：Bob 已接收
+
+python -S main.py --sender Alice --message "转账 100 元" --attack none --defense hmac
+会话 b7bc82a397168512a2d288cbd7b65aaa
+模式：原样转发 | 防御：HMAC-SHA-256
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 45af2403f9fc74c4f58ff5493eaf0a92eb7f8b610baae05b15518c433318c6de
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 45af2403f9fc74c4f58ff5493eaf0a92eb7f8b610baae05b15518c433318c6de
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 45af2403f9fc74c4f58ff5493eaf0a92eb7f8b610baae05b15518c433318c6de
+[Bob] HMAC 认证通过 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 45af2403f9fc74c4f58ff5493eaf0a92eb7f8b610baae05b15518c433318c6de
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 45af2403f9fc74c4f58ff5493eaf0a92eb7f8b610baae05b15518c433318c6de
+结果：Bob 已接收
+
+python -S main.py --sender Alice --message "转账 100 元" --attack tamper --defense none
+会话 e4da31bc599c6ad9a00dc3af70a9c527
+模式：篡改正文 | 防御：无认证
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元"
+[Evil] 篡改正文 | Alice -> Bob | 序号 1 | 正文 "转账 900 元"
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 900 元"
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 900 元"
+结果：Bob 已接收
+
+python -S main.py --sender Alice --message "转账 100 元" --attack tamper --defense hmac
+会话 8a6848510d078938a856e0ef1531d5e5
+模式：篡改正文 | 防御：HMAC-SHA-256
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 51684921f1ecf8ac6930dbc6e76926b5362a9932a7eaa70dc226dd95ea7ac385
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 51684921f1ecf8ac6930dbc6e76926b5362a9932a7eaa70dc226dd95ea7ac385
+[Evil] 篡改正文 | Alice -> Bob | 序号 1 | 正文 "转账 900 元" | HMAC 51684921f1ecf8ac6930dbc6e76926b5362a9932a7eaa70dc226dd95ea7ac385
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 900 元" | HMAC 51684921f1ecf8ac6930dbc6e76926b5362a9932a7eaa70dc226dd95ea7ac385
+[Bob] HMAC 认证失败，拒绝接收 | Alice -> Bob | 序号 1 | 正文 "转账 900 元" | HMAC 51684921f1ecf8ac6930dbc6e76926b5362a9932a7eaa70dc226dd95ea7ac385
+结果：Bob 已拒绝
+
+python -S main.py --sender Alice --message "转账 100 元" --attack replay --defense hmac
+会话 6a934555347b35b6ed5de001b4e06776
+模式：重放消息 | 防御：HMAC-SHA-256
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Bob] HMAC 认证通过 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+结果：Bob 已接收
+重放阶段：Evil 再次发送刚才缓存的消息
+[Evil] 重放已缓存消息，保留会话、序号和标签 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Bob] HMAC 认证通过 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC f7ae1d7c3ebec12e5eff6da1ade97e66c876f3e9cad9d46efc9f439ee0b6af01
+重放结果：Bob 已接收 | 收件箱消息数 2
+
+python -S main.py --sender Alice --message "转账 100 元" --attack replay --defense hmac-replay
+会话 5dfb09d10559f800c4a4391c074c6fa7
+模式：重放消息 | 防御：HMAC-SHA-256 + 防重放
+[Alice] 发送 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Evil] 截获 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Bob] HMAC 认证通过 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Bob] 接收并存入收件箱 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+结果：Bob 已接收
+重放阶段：Evil 再次发送刚才缓存的消息
+[Evil] 重放已缓存消息，保留会话、序号和标签 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Evil] 转发 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Bob] HMAC 认证通过 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+[Bob] 重复或过期序号，拒绝接收 | Alice -> Bob | 序号 1 | 正文 "转账 100 元" | HMAC 44b845bfeedce682b7dad4fb4e7762f9c74276c4afe3c31388267d92eb8fe47a
+重放结果：Bob 已拒绝 | 收件箱消息数 1

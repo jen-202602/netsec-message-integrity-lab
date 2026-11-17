@@ -1,0 +1,61 @@
+Final verification / 2026-11-17 Asia/Shanghai
+Command: python -S -m unittest discover -v
+Working directory: extracted program.zip / netsec-message-integrity-lab
+Python 3.10.9, Windows, Tk 8.6
+
+test_autoplay_completes_through_tk_event_loop (tests.test_gui.GuiTests) ... ok
+test_changing_scenario_starts_a_new_session (tests.test_gui.GuiTests) ... ok
+test_gui_scenarios_for_all_modes (tests.test_gui.GuiTests) ... ok
+test_manual_replay_and_direction_change (tests.test_gui.GuiTests) ... ok
+test_pause_and_resume_preserve_progress (tests.test_gui.GuiTests) ... ok
+test_prepare_and_single_step_keep_inbox_unchanged (tests.test_gui.GuiTests) ... ok
+test_reset_discards_partial_send_and_cancels_timer (tests.test_gui.GuiTests) ... ok
+test_key_and_message_boundaries (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_protocol_fields_are_authenticated (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_rejects_modified_tags_data_and_keys (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_rejects_non_bytes (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_reproducible_random_inputs (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_rfc4231_full_length_vectors (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_rfc4231_truncated_vector (tests.test_hmac_sha256.HmacSha256Tests) ... ok
+test_replay_cli_with_each_defense_and_direction (tests.test_replay.ReplayCliTests) ... ok
+test_replay_script_and_module_entry_points (tests.test_replay.ReplayCliTests) ... ok
+test_authenticated_wrong_session_cannot_poison_sequence_state (tests.test_replay.ReplayTests) ... ok
+test_cache_contains_actual_forwarded_message (tests.test_replay.ReplayTests) ... ok
+test_fresh_endpoint_sessions_reset_receiving_state (tests.test_replay.ReplayTests) ... ok
+test_gaps_are_accepted_and_late_messages_are_rejected (tests.test_replay.ReplayTests) ... ok
+test_invalid_authentication_cannot_poison_sequence_state (tests.test_replay.ReplayTests) ... ok
+test_invalid_replay_configuration (tests.test_replay.ReplayTests) ... ok
+test_old_session_with_valid_tag_is_rejected_before_sequence_update (tests.test_replay.ReplayTests) ... ok
+test_older_history_selection_and_empty_cache (tests.test_replay.ReplayTests) ... ok
+test_repeated_rejection_and_later_normal_bidirectional_traffic (tests.test_replay.ReplayTests) ... ok
+test_replay_under_all_defenses_and_directions (tests.test_replay.ReplayTests) ... ok
+test_cli_attack_and_defense_combinations (tests.test_scenarios.CliScenarioTests) ... ok
+test_cli_custom_and_empty_replacement (tests.test_scenarios.CliScenarioTests) ... ok
+test_invalid_cli_options (tests.test_scenarios.CliScenarioTests) ... ok
+test_script_and_module_entry_points (tests.test_scenarios.CliScenarioTests) ... ok
+test_authentication_tag_is_excluded_from_authentication_input (tests.test_scenarios.ScenarioTests) ... ok
+test_bidirectional_sequences_and_session_isolation (tests.test_scenarios.ScenarioTests) ... ok
+test_default_flow_preserves_event_order (tests.test_scenarios.ScenarioTests) ... ok
+test_empty_content_and_unicode (tests.test_scenarios.ScenarioTests) ... ok
+test_identical_replacement_preserves_authentication (tests.test_scenarios.ScenarioTests) ... ok
+test_invalid_configuration_and_messages (tests.test_scenarios.ScenarioTests) ... ok
+test_missing_modified_truncated_and_wrong_key_tags_are_rejected (tests.test_scenarios.ScenarioTests) ... ok
+test_normal_and_tampered_delivery_with_each_defense (tests.test_scenarios.ScenarioTests) ... ok
+test_normal_traffic_after_rejection (tests.test_scenarios.ScenarioTests) ... ok
+test_binary_and_utf8_messages (tests.test_sha256.Sha256Tests) ... ok
+test_calls_have_independent_state (tests.test_sha256.Sha256Tests) ... ok
+test_known_vectors (tests.test_sha256.Sha256Tests) ... ok
+test_padding_and_block_boundaries (tests.test_sha256.Sha256Tests) ... ok
+test_rejects_non_bytes (tests.test_sha256.Sha256Tests) ... ok
+test_reproducible_random_inputs (tests.test_sha256.Sha256Tests) ... ok
+test_boolean_receiving_interface_still_runs_all_steps (tests.test_steps.StepExecutionTests) ... ok
+test_discarding_pending_steps_does_not_update_inbox (tests.test_steps.StepExecutionTests) ... ok
+test_replay_steps_share_receiver_state (tests.test_steps.StepExecutionTests) ... ok
+test_send_and_authentication_steps_do_not_deliver_early (tests.test_steps.StepExecutionTests) ... ok
+test_synchronous_and_stepwise_event_sequences_match (tests.test_steps.StepExecutionTests) ... ok
+test_tamper_occurs_after_interception (tests.test_steps.StepExecutionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 51 tests in 7.827s
+
+OK

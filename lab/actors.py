@@ -1,6 +1,7 @@
 """Alice and Bob own their inboxes; Evil controls message forwarding."""
 
 from dataclasses import dataclass, field, replace
+from collections.abc import Iterator
 
 from .crypto import hmac_sha256, verify_hmac_sha256
 from .protocol import Message, PARTICIPANTS
@@ -44,22 +45,31 @@ class Endpoint:
         return self.receive_status(message) == "receive"
 
     def receive_status(self, message: Message) -> str:
-        """Authenticate, check freshness, and return the delivery outcome."""
+        """Run receiving to completion and return the final outcome."""
+        return tuple(self.receive_steps(message))[-1]
+
+    def receive_steps(self, message: Message) -> Iterator[str]:
+        """Pause after authentication, before freshness checks and inbox updates."""
         if message.recipient != self.name:
             raise ValueError("message is addressed to another endpoint")
         if self.key is not None and not verify_hmac_sha256(
             self.key, message.to_bytes(), message.auth_tag
         ):
-            return "reject_auth"
+            yield "reject_auth"
+            return
+        if self.key is not None:
+            yield "verify_pass"
         if self.anti_replay:
             if message.session_id != self.session_id:
-                return "reject_session"
+                yield "reject_session"
+                return
             if message.sequence <= self._last_received_sequence:
-                return "reject_replay"
+                yield "reject_replay"
+                return
         self.inbox.append(message)
         if self.anti_replay:
             self._last_received_sequence = message.sequence
-        return "receive"
+        yield "receive"
 
 
 @dataclass

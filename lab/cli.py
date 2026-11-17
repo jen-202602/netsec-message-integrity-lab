@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="中间人攻击与防御实验器 · 篡改、重放与防御")
     parser.add_argument("--sender", choices=PARTICIPANTS, default="Alice", help="发送方")
     parser.add_argument("--message", help="消息正文，默认向接收方发送问候")
+    parser.add_argument("--gui", action="store_true", help="启动图形界面")
     parser.add_argument("--attack", choices=("none", "tamper", "replay"), default="none", help="攻击方式")
     parser.add_argument("--defense", choices=("none", "hmac", "hmac-replay"), default="none", help="防御方式")
     parser.add_argument("--tampered-message", help="Evil 替换的正文，篡改模式默认使用“转账 900 元”")
@@ -48,6 +49,13 @@ def main(argv: list[str] | None = None) -> int:
     tampered_content = args.tampered_message
     if args.attack == "tamper" and tampered_content is None:
         tampered_content = "转账 900 元"
+    if args.gui:
+        from .gui import launch
+
+        return launch(
+            sender=args.sender, message=content, attack=args.attack,
+            defense=args.defense, tampered_content=tampered_content,
+        )
     simulation = Simulation(
         attack=args.attack, defense=args.defense, tampered_content=tampered_content
     )

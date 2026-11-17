@@ -1,6 +1,7 @@
 """Route messages through Evil and expose communication events to clients."""
 
 from dataclasses import dataclass
+from collections.abc import Iterator
 import secrets
 
 from .actors import Endpoint, Evil
@@ -40,28 +41,34 @@ class Simulation:
         self._endpoints = {"Alice": self.alice, "Bob": self.bob}
 
     def send(self, sender: str, content: str) -> tuple[Event, ...]:
+        return tuple(self.send_steps(sender, content))
+
+    def send_steps(self, sender: str, content: str) -> Iterator[Event]:
+        """Execute one communication action for each iterator advancement."""
         if sender not in PARTICIPANTS:
             raise ValueError("sender must be Alice or Bob")
         recipient = "Bob" if sender == "Alice" else "Alice"
         message = self._endpoints[sender].create_message(
             self.session_id, recipient, content
         )
-        events = [Event(sender, "send", message), Event("Evil", "intercept", message)]
+        yield Event(sender, "send", message)
+        yield Event("Evil", "intercept", message)
         forwarded = self.evil.forward(message)
         if forwarded.content != message.content:
-            events.append(Event("Evil", "tamper", forwarded))
-        return tuple(events) + self._deliver(forwarded)
+            yield Event("Evil", "tamper", forwarded)
+        yield from self._deliver_steps(forwarded)
 
     def replay(self, index: int = -1) -> tuple[Event, ...]:
-        message = self.evil.replay(index)
-        return (Event("Evil", "replay", message),) + self._deliver(message)
+        return tuple(self.replay_steps(index))
 
-    def _deliver(self, message: Message) -> tuple[Event, ...]:
+    def replay_steps(self, index: int = -1) -> Iterator[Event]:
+        message = self.evil.replay(index)
+        yield Event("Evil", "replay", message)
+        yield from self._deliver_steps(message)
+
+    def _deliver_steps(self, message: Message) -> Iterator[Event]:
         """Use the same receiver checks for original and replayed traffic."""
-        events = [Event("Evil", "forward", message)]
+        yield Event("Evil", "forward", message)
         receiver = self._endpoints[message.recipient]
-        status = receiver.receive_status(message)
-        if receiver.key is not None and status != "reject_auth":
-            events.append(Event(receiver.name, "verify_pass", message))
-        events.append(Event(receiver.name, status, message))
-        return tuple(events)
+        for status in receiver.receive_steps(message):
+            yield Event(receiver.name, status, message)

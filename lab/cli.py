@@ -11,9 +11,12 @@ ACTION_LABELS = {
     "send": "发送",
     "intercept": "截获",
     "tamper": "篡改正文",
+    "replay": "重放已缓存消息，保留会话、序号和标签",
     "forward": "转发",
     "verify_pass": "HMAC 认证通过",
     "reject_auth": "HMAC 认证失败，拒绝接收",
+    "reject_session": "会话标识不匹配，拒绝接收",
+    "reject_replay": "重复或过期序号，拒绝接收",
     "receive": "接收并存入收件箱",
 }
 
@@ -30,11 +33,11 @@ def format_event(event: Event) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="中间人攻击与防御实验器 · 消息篡改与 HMAC 防御")
+    parser = argparse.ArgumentParser(description="中间人攻击与防御实验器 · 篡改、重放与防御")
     parser.add_argument("--sender", choices=PARTICIPANTS, default="Alice", help="发送方")
     parser.add_argument("--message", help="消息正文，默认向接收方发送问候")
-    parser.add_argument("--attack", choices=("none", "tamper"), default="none", help="攻击方式")
-    parser.add_argument("--defense", choices=("none", "hmac"), default="none", help="防御方式")
+    parser.add_argument("--attack", choices=("none", "tamper", "replay"), default="none", help="攻击方式")
+    parser.add_argument("--defense", choices=("none", "hmac", "hmac-replay"), default="none", help="防御方式")
     parser.add_argument("--tampered-message", help="Evil 替换的正文，篡改模式默认使用“转账 900 元”")
     args = parser.parse_args(argv)
     if args.tampered_message is not None and args.attack != "tamper":
@@ -49,14 +52,24 @@ def main(argv: list[str] | None = None) -> int:
         attack=args.attack, defense=args.defense, tampered_content=tampered_content
     )
     print(f"会话 {simulation.session_id}")
-    attack_label = "原样转发" if args.attack == "none" else "篡改正文"
-    defense_label = "无认证" if args.defense == "none" else "HMAC-SHA-256"
+    attack_label = {"none": "原样转发", "tamper": "篡改正文", "replay": "重放消息"}[args.attack]
+    defense_label = {
+        "none": "无认证", "hmac": "HMAC-SHA-256", "hmac-replay": "HMAC-SHA-256 + 防重放"
+    }[args.defense]
     print(f"模式：{attack_label} | 防御：{defense_label}")
     events = simulation.send(args.sender, content)
     for event in events:
         print(format_event(event))
     result = "已接收" if events[-1].action == "receive" else "已拒绝"
     print(f"结果：{recipient} {result}")
+    if args.attack == "replay":
+        print("重放阶段：Evil 再次发送刚才缓存的消息")
+        replay_events = simulation.replay()
+        for event in replay_events:
+            print(format_event(event))
+        replay_result = "已接收" if replay_events[-1].action == "receive" else "已拒绝"
+        receiver = simulation.bob if recipient == "Bob" else simulation.alice
+        print(f"重放结果：{recipient} {replay_result} | 收件箱消息数 {len(receiver.inbox)}")
     return 0
 
 

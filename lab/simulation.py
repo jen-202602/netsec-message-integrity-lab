@@ -22,19 +22,20 @@ class Simulation:
         defense: str = "none",
         tampered_content: str | None = None,
     ) -> None:
-        if attack not in ("none", "tamper"):
-            raise ValueError("attack must be none or tamper")
-        if defense not in ("none", "hmac"):
-            raise ValueError("defense must be none or hmac")
+        if attack not in ("none", "tamper", "replay"):
+            raise ValueError("attack must be none, tamper, or replay")
+        if defense not in ("none", "hmac", "hmac-replay"):
+            raise ValueError("defense must be none, hmac, or hmac-replay")
         if attack == "tamper" and not isinstance(tampered_content, str):
             raise ValueError("tamper attack requires a string tampered_content")
-        if attack == "none" and tampered_content is not None:
+        if attack != "tamper" and tampered_content is not None:
             raise ValueError("tampered_content requires the tamper attack")
         self.session_id = secrets.token_hex(16)
         # Model a shared key distributed through a trusted channel before this session.
-        key = secrets.token_bytes(32) if defense == "hmac" else None
-        self.alice = Endpoint("Alice", key=key)
-        self.bob = Endpoint("Bob", key=key)
+        key = secrets.token_bytes(32) if defense != "none" else None
+        anti_replay = defense == "hmac-replay"
+        self.alice = Endpoint("Alice", key=key, anti_replay=anti_replay, session_id=self.session_id)
+        self.bob = Endpoint("Bob", key=key, anti_replay=anti_replay, session_id=self.session_id)
         self.evil = Evil(tampered_content=tampered_content)
         self._endpoints = {"Alice": self.alice, "Bob": self.bob}
 
@@ -49,13 +50,18 @@ class Simulation:
         forwarded = self.evil.forward(message)
         if forwarded.content != message.content:
             events.append(Event("Evil", "tamper", forwarded))
-        events.append(Event("Evil", "forward", forwarded))
-        receiver = self._endpoints[forwarded.recipient]
-        accepted = receiver.receive(forwarded)
-        if accepted:
-            if receiver.key is not None:
-                events.append(Event(receiver.name, "verify_pass", forwarded))
-            events.append(Event(receiver.name, "receive", forwarded))
-        else:
-            events.append(Event(receiver.name, "reject_auth", forwarded))
+        return tuple(events) + self._deliver(forwarded)
+
+    def replay(self, index: int = -1) -> tuple[Event, ...]:
+        message = self.evil.replay(index)
+        return (Event("Evil", "replay", message),) + self._deliver(message)
+
+    def _deliver(self, message: Message) -> tuple[Event, ...]:
+        """Use the same receiver checks for original and replayed traffic."""
+        events = [Event("Evil", "forward", message)]
+        receiver = self._endpoints[message.recipient]
+        status = receiver.receive_status(message)
+        if receiver.key is not None and status != "reject_auth":
+            events.append(Event(receiver.name, "verify_pass", message))
+        events.append(Event(receiver.name, status, message))
         return tuple(events)

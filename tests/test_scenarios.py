@@ -19,7 +19,7 @@ from lab.simulation import Simulation
 class ScenarioTests(unittest.TestCase):
     def test_normal_and_tampered_delivery_with_each_defense(self) -> None:
         for sender in ("Alice", "Bob"):
-            for defense in ("none", "hmac"):
+            for defense in ("none", "hmac", "hmac-replay"):
                 for attack in ("none", "tamper"):
                     with self.subTest(sender=sender, defense=defense, attack=attack):
                         replacement = "转账 900 元" if attack == "tamper" else None
@@ -33,8 +33,8 @@ class ScenarioTests(unittest.TestCase):
                         self.assertEqual(original.content, "转账 100 元")
                         self.assertEqual(forwarded.content, replacement or original.content)
                         self.assertEqual(original.auth_tag, forwarded.auth_tag)
-                        self.assertEqual(bool(original.auth_tag), defense == "hmac")
-                        rejected = attack == "tamper" and defense == "hmac"
+                        self.assertEqual(bool(original.auth_tag), defense != "none")
+                        rejected = attack == "tamper" and defense != "none"
                         if rejected:
                             self.assertEqual(events[-1].action, "reject_auth")
                             self.assertEqual(receiver.inbox, [])
@@ -43,7 +43,7 @@ class ScenarioTests(unittest.TestCase):
                             self.assertEqual(receiver.inbox, [forwarded])
                             self.assertEqual(
                                 any(event.action == "verify_pass" for event in events),
-                                defense == "hmac",
+                                defense != "none",
                             )
 
     def test_default_flow_preserves_event_order(self) -> None:
@@ -133,7 +133,7 @@ class ScenarioTests(unittest.TestCase):
 class CliScenarioTests(unittest.TestCase):
     def test_cli_attack_and_defense_combinations(self) -> None:
         for sender in ("Alice", "Bob"):
-            for defense in ("none", "hmac"):
+            for defense in ("none", "hmac", "hmac-replay"):
                 for attack in ("none", "tamper"):
                     with self.subTest(sender=sender, defense=defense, attack=attack):
                         output = io.StringIO()
@@ -143,7 +143,7 @@ class CliScenarioTests(unittest.TestCase):
                                 "--attack", attack, "--defense", defense,
                             ])
                         self.assertEqual(result, 0)
-                        expected = "已拒绝" if defense == "hmac" and attack == "tamper" else "已接收"
+                        expected = "已拒绝" if defense != "none" and attack == "tamper" else "已接收"
                         self.assertIn(expected, output.getvalue())
                         self.assertIn("转账 100 元", output.getvalue())
                         if attack == "tamper":

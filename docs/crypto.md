@@ -61,6 +61,6 @@ python -m unittest discover -v
 
 同时复查 `python main.py` 和 `python -m lab.cli` 两种入口，验证 Alice 和 Bob 两个方向的正常通信。
 
-## 后续接入
+## 通信接入
 
-第三阶段将使用 `Message.to_bytes()` 生成认证输入，将标签随消息转发，并在接收端调用验证接口决定接收或拒绝。第二阶段已通过算法层面的编码与认证测试，当前 CLI 展示正常通信流程。
+第三阶段已使用 `Message.to_bytes()` 生成认证输入，将标签随消息转发，并在接收端调用验证接口决定接收或拒绝。CLI 支持正常通信、正文篡改和 HMAC 防御。攻防处理及场景验收见 [协议说明](protocol.md)。

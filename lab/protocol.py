@@ -14,6 +14,7 @@ class Message:
     recipient: str
     sequence: int
     content: str
+    auth_tag: bytes = b""
     version: int = field(default=1, init=False)
 
     def __post_init__(self) -> None:
@@ -27,9 +28,11 @@ class Message:
             raise ValueError("sequence must be a positive integer")
         if not isinstance(self.content, str):
             raise TypeError("content must be a string")
+        if not isinstance(self.auth_tag, bytes):
+            raise TypeError("auth_tag must be bytes")
 
     def to_bytes(self) -> bytes:
-        """Encode every protocol field without platform-dependent whitespace."""
+        """Encode authenticated fields, excluding the tag itself."""
         fields = {
             "version": self.version,
             "session_id": self.session_id,

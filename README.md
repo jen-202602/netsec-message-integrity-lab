@@ -6,16 +6,17 @@
 
 ## 当前进度
 
-已完成第一阶段的正常文本通信，以及第二阶段的密码算法与单元测试。
+已完成正常文本通信、自行实现的密码算法与单元测试，以及第三阶段的消息篡改攻击与 HMAC 防御。
 
 - Alice 和 Bob 可以互相发送消息，各自维护发送序号和收件箱。
-- Evil 位于通信链路中，接收并原样转发消息。
-- 命令行展示发送、截获、转发、接收四个步骤。
+- Evil 位于通信链路中，可以原样转发消息或替换消息正文。
+- 命令行展示发送、截获、篡改、转发、认证和接收或拒绝的过程。
 - 消息包含协议版本、会话标识、发送方、接收方、序号和正文，使用确定性的 UTF-8 JSON 编码。
 - 自行实现 SHA-256、HMAC-SHA-256 和完整认证标签验证。
 - 算法测试包含固定标准向量、边界输入、独立标准库对照和篡改检测。
+- 启用 HMAC 后，接收方验证全部消息字段的认证标签，通过后才写入收件箱。
 
-后续阶段将把认证接入通信链路，实现篡改攻防、重放攻防，以及 GUI 和单步执行。
+后续阶段将实现重放攻防，以及 GUI 和单步执行。
 
 ## 运行环境
 
@@ -57,7 +58,46 @@ assert [message.sequence for message in simulation.bob.inbox] == [1, 2]
 assert simulation.alice.inbox[0].content == "收到，Alice！"
 ```
 
-## 算法测试
+## 篡改攻击与 HMAC 防御
+
+使用同一正文依次运行以下四种场景，观察接收方的结果。
+
+```powershell
+python main.py --message "转账 100 元"
+python main.py --message "转账 100 元" --attack tamper
+python main.py --message "转账 100 元" --defense hmac
+python main.py --message "转账 100 元" --attack tamper --defense hmac
+```
+
+| 场景 | Bob 的结果 |
+| --- | --- |
+| 正常通信，无认证 | 接收“转账 100 元” |
+| 篡改通信，无认证 | 接收被 Evil 替换的“转账 900 元” |
+| 正常通信，启用 HMAC | 认证通过，接收“转账 100 元” |
+| 篡改通信，启用 HMAC | 认证失败，拒绝接收，收件箱保持为空 |
+
+篡改模式默认替换为“转账 900 元”。可以用 `--tampered-message` 自定义替换正文，并通过 `--sender Bob` 演示反向通信。
+
+```powershell
+python main.py --sender Bob --message "同意支付 100 元" --attack tamper --tampered-message "同意支付 900 元" --defense hmac
+```
+
+启用 HMAC 时，模拟器生成一个随机的 32 字节密钥并交给双方，表示通信前已完成可信的密钥分发。Evil 获得消息和认证标签。篡改保留原标签，因此接收方对修改后的正文验证失败。两端日志中的标签可用来核对传输前后的变化。
+
+相同正文替换后字节内容保持一致时，认证仍会通过。篡改实验请选择与原消息不同的正文。CLI 用退出码 0 表示实验执行完成，攻击结果由输出中的“已接收”或“已拒绝”表示。
+
+Python 接口同样支持场景选择。
+
+```python
+from lab.simulation import Simulation
+
+simulation = Simulation(attack="tamper", defense="hmac", tampered_content="转账 900 元")
+events = simulation.send("Alice", "转账 100 元")
+assert events[-1].action == "reject_auth"
+assert simulation.bob.inbox == []
+```
+
+## 测试
 
 在项目根目录执行全部测试。
 
@@ -70,9 +110,10 @@ python -m unittest discover -v
 ```powershell
 python -m unittest tests.test_sha256 -v
 python -m unittest tests.test_hmac_sha256 -v
+python -m unittest tests.test_scenarios -v
 ```
 
-当前共 13 个测试方法，包含参数化子用例。已在 Python 3.10.9 下全部通过。测试依据、用例和验证环境见 [算法与测试说明](docs/crypto.md)。
+当前共 26 个测试方法，其中算法测试 13 个、场景和 CLI 测试 13 个，包含参数化子用例。已在 Python 3.10.9 下全部通过。测试依据、用例和验证环境见 [算法与测试说明](docs/crypto.md)，场景验收见 [协议说明](docs/protocol.md)。
 
 算法接口接收 `bytes`，SHA-256 和 HMAC 均返回 32 字节结果。文本显式使用 UTF-8 编码，展示十六进制结果时调用 `.hex()`。
 
@@ -106,6 +147,7 @@ tests/
     __init__.py
     test_sha256.py       SHA-256 测试
     test_hmac_sha256.py  HMAC 测试
+    test_scenarios.py    攻防场景与 CLI 测试
 docs/
     protocol.md     协议、角色和阶段设计说明
     crypto.md       算法实现与测试依据、结果
@@ -124,4 +166,5 @@ docs/
 
 - 第一阶段采用消息经过 Evil 的单进程通信模型，并用命令行验证正常传输。协议细节见 [协议说明](docs/protocol.md)。
 - 第二阶段按规范实现消息填充、32 位运算、压缩函数和 HMAC 内外层摘要。重点处理 56 字节填充边界、超过 64 字节的密钥归一化，以及完整标签长度检查。13 个测试方法全部通过，并复查两个方向的 CLI 正常通信。
+- 第三阶段在消息对象中加入认证标签，标签独立于认证输入，避免自引用。Evil 通过转发链路修改正文，接收方在写入收件箱前验证标签。26 个测试方法全部通过，覆盖两个发送方向、攻防组合、错误标签和拒收后的正常通信。
 - AI 辅助使用 Codex（GPT-6），参与需求整理、方案设计、代码与说明编写。阶段验证覆盖命令行入口、消息编码、连续双向发送和参数错误处理，后续按阶段补充验证记录。

@@ -10,7 +10,10 @@ from .simulation import Event, Simulation
 ACTION_LABELS = {
     "send": "发送",
     "intercept": "截获",
-    "forward": "原样转发",
+    "tamper": "篡改正文",
+    "forward": "转发",
+    "verify_pass": "HMAC 认证通过",
+    "reject_auth": "HMAC 认证失败，拒绝接收",
     "receive": "接收并存入收件箱",
 }
 
@@ -18,26 +21,42 @@ ACTION_LABELS = {
 def format_event(event: Event) -> str:
     message = event.message
     content = json.dumps(message.content, ensure_ascii=False)
+    tag = f" | HMAC {message.auth_tag.hex()}" if message.auth_tag else ""
     return (
         f"[{event.actor}] {ACTION_LABELS[event.action]} | "
         f"{message.sender} -> {message.recipient} | "
-        f"序号 {message.sequence} | 正文 {content}"
+        f"序号 {message.sequence} | 正文 {content}{tag}"
     )
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="中间人攻击与防御实验器 · 正常通信")
+    parser = argparse.ArgumentParser(description="中间人攻击与防御实验器 · 消息篡改与 HMAC 防御")
     parser.add_argument("--sender", choices=PARTICIPANTS, default="Alice", help="发送方")
     parser.add_argument("--message", help="消息正文，默认向接收方发送问候")
+    parser.add_argument("--attack", choices=("none", "tamper"), default="none", help="攻击方式")
+    parser.add_argument("--defense", choices=("none", "hmac"), default="none", help="防御方式")
+    parser.add_argument("--tampered-message", help="Evil 替换的正文，篡改模式默认使用“转账 900 元”")
     args = parser.parse_args(argv)
+    if args.tampered_message is not None and args.attack != "tamper":
+        parser.error("--tampered-message 需要 --attack tamper")
 
     recipient = "Bob" if args.sender == "Alice" else "Alice"
     content = args.message if args.message is not None else f"你好，{recipient}！"
-    simulation = Simulation()
+    tampered_content = args.tampered_message
+    if args.attack == "tamper" and tampered_content is None:
+        tampered_content = "转账 900 元"
+    simulation = Simulation(
+        attack=args.attack, defense=args.defense, tampered_content=tampered_content
+    )
     print(f"会话 {simulation.session_id}")
-    print("模式：正常通信，Evil 原样转发")
-    for event in simulation.send(args.sender, content):
+    attack_label = "原样转发" if args.attack == "none" else "篡改正文"
+    defense_label = "无认证" if args.defense == "none" else "HMAC-SHA-256"
+    print(f"模式：{attack_label} | 防御：{defense_label}")
+    events = simulation.send(args.sender, content)
+    for event in events:
         print(format_event(event))
+    result = "已接收" if events[-1].action == "receive" else "已拒绝"
+    print(f"结果：{recipient} {result}")
     return 0
 
 
